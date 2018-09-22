@@ -4,6 +4,7 @@ open import Digems.Universe.Base
 module Digems.Diff.Types {n : ℕ}(φ : Fam n) where
 
 open import Digems.Universe.Treefix φ
+open import Digems.Universe.Subtree φ
 
 Γ : ℕ → Set
 Γ = Vec (Atom n)
@@ -22,10 +23,8 @@ record Change (at : Atom n) : Set where
 Patch : Atom n → Set
 Patch = Tx Change
   
--- common subtree map
-CSM : Set
-CSM = ∀{ι ν} 
-    → (src : Fix φ ι)
-    → (dst : Fix φ ι)
-    → (tgt : Fix φ ν)
-    → Maybe (tgt ⊆Fix src × tgt ⊆Fix dst)
+-- common subtree map of two trees
+CSM : ∀{ι}(src dst : Fix φ ι) → Set
+CSM src dst = ∀{ν} 
+            → (tgt : Fix φ ν)
+            → Maybe (tgt ⊆Fix src × tgt ⊆Fix dst)

@@ -26,12 +26,13 @@ Setⁿ n = Fin n → Set
 ⟦ K κ ⟧A X = ⟦ κ ⟧K
 ⟦ I ν ⟧A X = X ν 
 
-elimA : ∀{y}{n : ℕ}{α : Atom n}{X : Setⁿ n}{Y : Set y}
-      → (∀{κ} → ⟦ κ ⟧K → Y)
-      → (∀{ι} → X ι    → Y)
-      → ⟦ α ⟧A X → Y
-elimA {α = K κ} fK fI x = fK x
-elimA {α = I ι} fK fI x = fI x
+elimA : ∀{y}{n : ℕ}{X : Setⁿ n}{Y : Atom n → Set y}
+      → (∀{κ} → ⟦ κ ⟧K → Y (K κ))
+      → (∀{ι} → X ι    → Y (I ι))
+      → {α : Atom n}
+      → ⟦ α ⟧A X → Y α
+elimA fK fI {α = K κ} x = fK x
+elimA fK fI {α = I ι} x = fI x
 
 ⟦_⟧P : {n : ℕ} → Prod n → Setⁿ n → Set
 ⟦ π ⟧P X = All (λ α → ⟦ α ⟧A X) π

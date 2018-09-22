@@ -31,4 +31,7 @@ txJoin (hole x)     = x
 txJoin (opq k)      = opq k
 txJoin (peel c txs) = peel c (All-map txJoin txs) 
 
-
+{-# TERMINATING #-}
+txStiff : ∀{a F ι} → Fix φ ι → Tx {a} F (I ι)
+txStiff {_} {F} ⟨ rep ⟩ with sop rep
+...| tag c p = peel c (All-map (elimA {Y = Tx F} opq txStiff) p)
