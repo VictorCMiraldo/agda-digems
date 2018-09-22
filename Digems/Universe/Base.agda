@@ -1,4 +1,4 @@
-module Digems.Universe where
+module Digems.Universe.Base where
 
 open import Digems.Prelude
 open import Digems.Universe.Opaque
@@ -104,12 +104,14 @@ match C x with sop x
 Fam : ℕ → Set
 Fam n = Vec (Sum n) n
 
+⟦_⟧F : {n : ℕ}(φ : Fam n) → Fin n → Sum n
+⟦ φ ⟧F ι = Vec-lookup ι φ
+
 data Fix {n : ℕ}(φ : Fam n) : Fin n → Set where
-  ⟨_⟩ : ∀{i} → ⟦ Vec-lookup i φ ⟧S (Fix φ) → Fix φ i
+  ⟨_⟩ : ∀{i} → ⟦ ⟦ φ ⟧F i ⟧S (Fix φ) → Fix φ i
 
 {-# TERMINATING #-}
 _≟Fix_ : ∀{n i}{φ : Fam n} → (x y : Fix φ i) → Dec (x ≡ y)
 _≟Fix_ {φ = φ} ⟨ sx ⟩ ⟨ sy ⟩ with DecEq._≟S_ (Fix φ) _≟Fix_ sx sy
 ... | yes refl = yes refl
 ... | no ¬p = no (λ { refl → ¬p refl })
-

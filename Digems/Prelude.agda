@@ -75,12 +75,12 @@ open import Data.Nat
   public
 
 open import Data.List
-  using (List ; _∷_ ; [] ; length ; _++_)
+  using (List ; _∷_ ; [] ; length ; _++_; concat)
   renaming (map to List-map ; zip to List-zip)
   public
 
 open import Data.List.All
-  using (All ; _∷_ ; []) 
+  using (All ; _∷_ ; [])
   renaming (map to All-map)
   public
 
@@ -89,6 +89,12 @@ All-∷-inj
   → {px py : P x}{pxs pys : All P xs}
   → _≡_ {A = All P (x ∷ xs)} (px ∷ pxs) (py ∷ pys) → px ≡ py × pxs ≡ pys
 All-∷-inj refl = refl , refl
+
+All-fgt 
+  : ∀{a}{A : Set a}{P : Set}{xs : List A}
+  → All (const P) xs → List P
+All-fgt []       = []
+All-fgt (p ∷ ps) = p ∷ All-fgt ps
 
 open import Data.List.Any
   hiding (map)
