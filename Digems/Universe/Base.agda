@@ -26,6 +26,13 @@ Setⁿ n = Fin n → Set
 ⟦ K κ ⟧A X = ⟦ κ ⟧K
 ⟦ I ν ⟧A X = X ν 
 
+elimA : ∀{y}{n : ℕ}{α : Atom n}{X : Setⁿ n}{Y : Set y}
+      → (∀{κ} → ⟦ κ ⟧K → Y)
+      → (∀{ι} → X ι    → Y)
+      → ⟦ α ⟧A X → Y
+elimA {α = K κ} fK fI x = fK x
+elimA {α = I ι} fK fI x = fI x
+
 ⟦_⟧P : {n : ℕ} → Prod n → Setⁿ n → Set
 ⟦ π ⟧P X = All (λ α → ⟦ α ⟧A X) π
 
@@ -115,3 +122,11 @@ _≟Fix_ : ∀{n i}{φ : Fam n} → (x y : Fix φ i) → Dec (x ≡ y)
 _≟Fix_ {φ = φ} ⟨ sx ⟩ ⟨ sy ⟩ with DecEq._≟S_ (Fix φ) _≟Fix_ sx sy
 ... | yes refl = yes refl
 ... | no ¬p = no (λ { refl → ¬p refl })
+
+-- * Generalizations for 'Fam'
+
+Constr' : {n : ℕ}(φ : Fam n)(ι : Fin n) → Set
+Constr' φ ι = Constr (⟦ φ ⟧F ι)
+
+typeOf' : {n : ℕ}(φ : Fam n)(ι : Fin n)(c : Constr' φ ι) → Prod n
+typeOf' φ ι = typeOf (⟦ φ ⟧F ι)

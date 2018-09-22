@@ -15,8 +15,8 @@ data Txᵢ : Set where
 data Tx {a}(F : Atom n → Set a) : Atom n → Set a where
   hole : ∀{at} → F at   → Tx F at
   opq  : ∀{κ}  → ⟦ κ ⟧K → Tx F (K κ)
-  peel : ∀{ι}  → (c : Constr (⟦ φ ⟧F ι))
-               → All (Tx F) (typeOf (⟦ φ ⟧F ι) c)
+  peel : ∀{ι}  → (c : Constr' φ ι)
+               → All (Tx F) (typeOf' φ ι c)
                → Tx F (I ι)
 
 {-# TERMINATING #-}
@@ -30,3 +30,5 @@ txJoin : ∀{a F at} → Tx {a} (Tx F) at → Tx F at
 txJoin (hole x)     = x
 txJoin (opq k)      = opq k
 txJoin (peel c txs) = peel c (All-map txJoin txs) 
+
+
