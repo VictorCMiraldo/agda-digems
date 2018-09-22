@@ -22,13 +22,20 @@ module WithCSM {ι : Fin n}(src dst : Fix φ ι)(csm : CSM src dst) where
 
   -- The first step is to extract the treefixes. We will abstain
   -- from giving names to our holes yet.
+  {-# TERMINATING #-}
   extractTx : ∀{α} → ⟦ α ⟧A (Fix φ) → Tx SharedI α
   extractTx {K κ} atk = opq atk
-  extractTx {I ι} ati with csm ati
-  ...| nothing  = txStiff ati
-  ...| just prf = hole (ati , prf)
+  extractTx {I ι} ⟨ ati ⟩ with csm ⟨ ati ⟩
+  ...| just prf = hole ( ⟨ ati ⟩ , prf)
+  ...| nothing with sop ati
+  ...| tag c p = peel c (All-map extractTx p)
 
 
 diff : ∀{ι} → (x y : Fix φ ι) → Patch (I ι)
-diff x y = {!!}
+diff {ι} x y 
+  = let dx₀ = extractTx {I ι} x
+        dy₀ = extractTx {I ι} y
+     in {!!}
+  where
+    open WithCSM x y {!!}
 
