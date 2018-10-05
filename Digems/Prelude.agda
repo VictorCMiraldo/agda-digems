@@ -116,6 +116,15 @@ Any-there-inj
   → px ≡ py
 Any-there-inj refl = refl
 
+AnyAllCurry : ∀{a}{A : Set a}
+            → {P : A → Set}{Q : A → Set}
+            → (R : ∀{a} → P a → Q a → Set)
+            → {l : List A}
+            → Any P l → All Q l
+            → Set
+AnyAllCurry R (here px) (qx ∷ _)   = R px qx
+AnyAllCurry R (there a) (_  ∷ qxs) = AnyAllCurry R a qxs
+
 open import Data.Vec
   using (Vec ; _∷_; [])
   renaming (map to Vec-map ; lookup to Vec-lookup)
