@@ -3,9 +3,11 @@ open import Digems.Universe.Base
 
 module Digems.Universe.Treefix {n : ℕ}(φ : Fam n) where
 
+open import Digems.Universe.Location φ
+
 -- * Treefixes
 
-data Tx {a}(F : Atom n → Set a) : Atom n → Set a where
+data Tx {ℓ}(F : Atom n → Set ℓ) : Atom n → Set ℓ where
   hole : ∀{at} → F at   → Tx F at
   opq  : ∀{κ}  → ⟦ κ ⟧K → Tx F (K κ)
   peel : ∀{ι}  → (c : Constr' φ ι)
@@ -13,31 +15,46 @@ data Tx {a}(F : Atom n → Set a) : Atom n → Set a where
                → Tx F (I ι)
 
 {-# TERMINATING #-}
-txHoleIdxs : ∀{a F at} → Tx {a} F at → List (Atom n)
+txHoleIdxs : ∀{ℓ F at} → Tx {ℓ} F at → List (Atom n)
 txHoleIdxs (hole {at} _) = at ∷ []
 txHoleIdxs (opq _)       = []
 txHoleIdxs (peel _ a)    = concat (All-fgt (All-map txHoleIdxs a))
 
 {-# TERMINATING #-}
-txHoles : ∀{a F at}(tx : Tx {a} F at) → All F (txHoleIdxs tx)
+txHoles : ∀{ℓ F at}(tx : Tx {ℓ} F at) → All F (txHoleIdxs tx)
 txHoles (hole x)    = x ∷ []
 txHoles (opq _)     = []
 txHoles {F = F} (peel _ ps) 
   = aux ps
   where
-    aux : ∀{a F as} 
-        → (π : All (Tx {a} F) as)
+    aux : ∀{ℓ F as} 
+        → (π : All (Tx {ℓ} F) as)
         → All F (concat (All-fgt (All-map txHoleIdxs π)))
     aux []       = []
     aux (p ∷ ps) = All-++ (txHoles p) (aux ps)
 
 {-# TERMINATING #-}
-txJoin : ∀{a F at} → Tx {a} (Tx F) at → Tx F at
+txJoin : ∀{ℓ F at} → Tx {ℓ} (Tx F) at → Tx F at
 txJoin (hole x)     = x
 txJoin (opq k)      = opq k
 txJoin (peel c txs) = peel c (All-map txJoin txs) 
 
 {-# TERMINATING #-}
-txStiff : ∀{a F ι} → Fix φ ι → Tx {a} F (I ι)
+txStiff : ∀{ℓ F ι} → Fix φ ι → Tx {ℓ} F (I ι)
 txStiff {_} {F} ⟨ rep ⟩ with sop rep
 ...| tag c p = peel c (All-map (elimA {Y = Tx F} opq txStiff) p)
+
+module _ where
+  open import Data.List.Categorical using (monadPlus) 
+  open RawMonadPlus {lz} monadPlus
+
+  Tx↓ : (F : Atom n → Set) → Atom n → Set
+  Tx↓ F α = ∃ λ β → Loc α β × F β
+
+  tx-loc-iso : ∀{F α} → Tx F α → List (Tx↓ F α)
+  tx-loc-iso (hole {β} x) = return (β , here , x)
+  tx-loc-iso (opq _)      = ∅
+  tx-loc-iso (peel c txs) = {! (All-map tx-loc-iso txs) !}
+    where
+      conv : ∀{F π} → All (List ∘ Tx↓ F) π → List (∃ λ a → a  π × Tx↓ F a)
+      conv all = ?

@@ -3,8 +3,13 @@ module Digems.Prelude where
 -- * Levels
 
 open import Level
-  using ()
+  using (Level)
   renaming (zero to lz; suc to ls; _⊔_ to _⊔ₗ_)
+  public
+
+-- * Monads
+
+open import Category.Monad
   public
 
 -- * Homogeneous Equality and Decidability
@@ -24,6 +29,7 @@ open import Data.Empty
   public
 
 open import Relation.Unary
+  hiding (∅)
   public
 
 open import Data.Product
@@ -116,14 +122,14 @@ Any-there-inj
   → px ≡ py
 Any-there-inj refl = refl
 
-AnyAllCurry : ∀{a}{A : Set a}
-            → {P : A → Set}{Q : A → Set}
-            → (R : ∀{a} → P a → Q a → Set)
-            → {l : List A}
-            → Any P l → All Q l
-            → Set
-AnyAllCurry R (here px) (qx ∷ _)   = R px qx
-AnyAllCurry R (there a) (_  ∷ qxs) = AnyAllCurry R a qxs
+AnyAll-select
+  : ∀{a}{A : Set a}{P : A → Set}{Q : A → Set}
+  → {l : List A}
+  → Any P l 
+  → All Q l
+  → ∃ (λ a → P a × Q a)
+AnyAll-select (here px) (qx ∷ _)  = (_ , px , qx)
+AnyAll-select (there a) (_ ∷ qxs) = AnyAll-select a qxs
 
 open import Data.Vec
   using (Vec ; _∷_; [])
