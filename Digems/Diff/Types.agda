@@ -1,8 +1,9 @@
 open import Digems.Prelude
-open import Digems.Universe.Base
+open import Digems.Universe.Family
 
 module Digems.Diff.Types {n : ℕ}(φ : Fam n) where
 
+open import Digems.Universe φ
 open import Digems.Universe.Treefix φ
 open import Digems.Universe.Subtree φ
 

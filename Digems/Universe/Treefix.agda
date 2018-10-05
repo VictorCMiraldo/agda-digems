@@ -3,13 +3,6 @@ open import Digems.Universe.Base
 
 module Digems.Universe.Treefix {n : ℕ}(φ : Fam n) where
 
--- * Treefix indexes
-
-data Txᵢ : Set where
-  holeᵢ : Atom n → Txᵢ
-  pellᵢ : List Txᵢ → Txᵢ
-
-
 -- * Treefixes
 
 data Tx {a}(F : Atom n → Set a) : Atom n → Set a where
@@ -20,10 +13,23 @@ data Tx {a}(F : Atom n → Set a) : Atom n → Set a where
                → Tx F (I ι)
 
 {-# TERMINATING #-}
-txHoles : ∀{a F at} → Tx {a} F at → List (Atom n)
-txHoles (hole {at} _) = at ∷ []
-txHoles (opq _)       = []
-txHoles (peel _ a)    = concat (All-fgt (All-map txHoles a))
+txHoleIdxs : ∀{a F at} → Tx {a} F at → List (Atom n)
+txHoleIdxs (hole {at} _) = at ∷ []
+txHoleIdxs (opq _)       = []
+txHoleIdxs (peel _ a)    = concat (All-fgt (All-map txHoleIdxs a))
+
+{-# TERMINATING #-}
+txHoles : ∀{a F at}(tx : Tx {a} F at) → All F (txHoleIdxs tx)
+txHoles (hole x)    = x ∷ []
+txHoles (opq _)     = []
+txHoles {F = F} (peel _ ps) 
+  = aux ps
+  where
+    aux : ∀{a F as} 
+        → (π : All (Tx {a} F) as)
+        → All F (concat (All-fgt (All-map txHoleIdxs π)))
+    aux []       = []
+    aux (p ∷ ps) = All-++ (txHoles p) (aux ps)
 
 {-# TERMINATING #-}
 txJoin : ∀{a F at} → Tx {a} (Tx F) at → Tx F at

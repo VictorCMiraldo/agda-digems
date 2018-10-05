@@ -23,6 +23,9 @@ open import Data.Unit.NonEta
 open import Data.Empty
   public
 
+open import Relation.Unary
+  public
+
 open import Data.Product
   renaming (map to ×-map; swap to ×-swap)
   public
@@ -95,6 +98,12 @@ All-fgt
   → All (const P) xs → List P
 All-fgt []       = []
 All-fgt (p ∷ ps) = p ∷ All-fgt ps
+
+open import Data.List.All.Properties
+  using ()
+  renaming ( concat⁺ to All-concat⁺ ; concat⁻ to All-concat⁻
+           ; ++⁺ to All-++)
+  public
 
 open import Data.List.Any
   hiding (map)
