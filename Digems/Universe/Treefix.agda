@@ -3,8 +3,6 @@ open import Digems.Universe.Base
 
 module Digems.Universe.Treefix {n : ℕ}(φ : Fam n) where
 
-open import Digems.Universe.Location φ
-
 -- * Treefixes
 
 data Tx {ℓ}(F : Atom n → Set ℓ) : Atom n → Set ℓ where
@@ -43,18 +41,3 @@ txJoin (peel c txs) = peel c (All-map txJoin txs)
 txStiff : ∀{ℓ F ι} → Fix φ ι → Tx {ℓ} F (I ι)
 txStiff {_} {F} ⟨ rep ⟩ with sop rep
 ...| tag c p = peel c (All-map (elimA {Y = Tx F} opq txStiff) p)
-
-module _ where
-  open import Data.List.Categorical using (monadPlus) 
-  open RawMonadPlus {lz} monadPlus
-
-  Tx↓ : (F : Atom n → Set) → Atom n → Set
-  Tx↓ F α = ∃ λ β → Loc α β × F β
-
-  tx-loc-iso : ∀{F α} → Tx F α → List (Tx↓ F α)
-  tx-loc-iso (hole {β} x) = return (β , here , x)
-  tx-loc-iso (opq _)      = ∅
-  tx-loc-iso (peel c txs) = {! (All-map tx-loc-iso txs) !}
-    where
-      conv : ∀{F π} → All (List ∘ Tx↓ F) π → List (∃ λ a → a  π × Tx↓ F a)
-      conv all = ?
