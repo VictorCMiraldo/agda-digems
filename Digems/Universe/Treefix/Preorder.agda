@@ -91,7 +91,15 @@ p ⊑ q = Σ Subst (λ σ → Tx≤ σ p q)
     aux []       = Tx≤[]
     aux (x ∷ xs) = Tx≤∷ x x xs xs (go x) (aux xs)
 
-
+-- When proving transitivity, we are given two substitutions;
+--
+-- One that witnesses p ⊑ q, call it σ₁ and another
+-- that witnesses q ⊑ r, call it σ₂.
+--
+-- If nothing else is said, σ₁ and σ₂ might disagree. That is,
+-- σ₁ n ≡ just t ≢ just t' ≡ σ₂ n. Upon closer inspection, however,
+-- we see this cannot happen. Both p , q and r transform a fixed x into a 
+-- fixed y. Hence, the witnesses of p ⊑ q and q ⊑ r must agree.
 {-
 postulate
   patches-disagree : ∀{a}{A : Set a} → A
