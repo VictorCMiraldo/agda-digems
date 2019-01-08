@@ -1,51 +1,127 @@
 open import Digems.Prelude
 open import Digems.Universe.Base
 
+-- We shall carry out the proof that our ordering of
+-- relevant treefixes is, in fact, a preorder.
 module Digems.Universe.Treefix.Preorder {n : ℕ}(φ : Fam n) where
 
 open import Digems.Universe.Treefix φ
+  renaming (Tx to Treefix)
+open DecEq (Fix φ) _≟Fix_
+
+-- The first abstraction is that we shall fix the number of metariables.
+-- This, in fact, produces a family of proofs. Each for a treefix with
+-- a given number of variables. Note that since treefixes might not
+-- use all its variables, we just care for the treefix with *the most* variables.
+module WithArity (arity : ℕ) where
+
+ MetaVar : Atom n → Set
+ MetaVar α = Fin arity
+
+ Tx : Atom n → Set
+ Tx = Treefix MetaVar
+
+ -- We define a substitution to be a vector assigning to each metavariable
+ -- a treefix.
+ SubstN : ℕ → Set
+ SubstN = Vec (Maybe (Σ (Atom n) Tx))
+
+ -- Two substitutions are compatible iff they assime the same terms to the
+ -- same metavariables.
+ Compatible : ∀{n} → SubstN n → SubstN n → Set
+ Compatible [] [] = Unit
+ Compatible (nothing         ∷ σ₁) (just (α₂ , tx₂) ∷ σ₂) = Compatible σ₁ σ₂
+ Compatible (nothing         ∷ σ₁) (nothing         ∷ σ₂) = Compatible σ₁ σ₂
+ Compatible (just (α₁ , tx₁) ∷ σ₁) (nothing         ∷ σ₂) = Compatible σ₁ σ₂
+ Compatible (just (α₁ , tx₁) ∷ σ₁) (just (α₂ , tx₂) ∷ σ₂) 
+   = Σ (α₁ ≡ α₂) (λ { refl → tx₁ ≡ tx₂ }) × Compatible σ₁ σ₂
+
+ -- When substitutions are compatible, we can join them.
+ subst-join : ∀{n}(σ₁ σ₂ : SubstN n)(hip : Compatible σ₁ σ₂) → SubstN n
+ subst-join []                     []     unit       = []
+ subst-join (nothing ∷ σ₁) (just s₂ ∷ σ₂) hip        = just s₂ ∷ subst-join σ₁ σ₂ hip
+ subst-join (nothing ∷ σ₁) (nothing ∷ σ₂) hip        = nothing ∷ subst-join σ₁ σ₂ hip
+ subst-join (just s₁ ∷ σ₁) (nothing ∷ σ₂) hip        = just s₁ ∷ subst-join σ₁ σ₂ hip
+ subst-join (just s₁ ∷ σ₁) (just s₂ ∷ σ₂) (h₀ , hip) = just s₁ ∷ subst-join σ₁ σ₂ hip
+
+ -- empty substitution
+ subst-empty : ∀{n} → SubstN n
+ subst-empty {zero}  = []
+ subst-empty {suc n} = nothing ∷ subst-empty
+
+ -- predicate that ensures that the image of 'idx' under 'σ' is proositionally
+ -- equal to 'tx'
+ subst-img-is : ∀{n α}(σ : SubstN n)(idx : Fin n)(tx : Tx α) → Set
+ subst-img-is {_} {α} σ idx tx with Vec-lookup idx σ
+ ...| nothing         = ⊥
+ ...| just (α' , tx') 
+   with α ≟Atom α'
+ ...| no _     = ⊥
+ ...| yes refl = tx ≡ tx'
+
+ -- Finally, a substitution associates one 'tx' to each variable.
+ Subst : Set
+ Subst = SubstN arity
+
+ -- We define our order paramtrized by a substitution
+ -- from variables to terms.
+ mutual
+   data Tx≤* (σ : Subst) : ∀{π}(p q : All Tx π) → Set where
+     Tx≤[] : Tx≤* σ [] []
+     Tx≤∷  : ∀{α π}{p q : Tx α}{ps qs : All Tx π}
+           → Tx≤ σ p q 
+           → Tx≤* σ ps qs 
+           → Tx≤* σ (p ∷ ps) (q ∷ qs) 
+
+   data Tx≤ (σ : Subst) : ∀{α}(p q : Tx α) → Set where
+
+     Tx≤Refl  : ∀{α}{d : Tx α} → Tx≤ σ d d
+
+     Tx≤Peel  : ∀{ι}(c : Constr' φ ι){ps qs : All Tx (typeOf' φ ι c)}
+              → Tx≤* σ ps qs
+              → Tx≤ σ (peel {ι = ι} c ps) (peel c qs)
+
+     Tx≤Subst : ∀{at idx}{t : Tx at}
+              → subst-img-is σ idx t
+              → Tx≤ σ t (hole {at = at} idx)
+
+{-
+ -- We are only interested in transitivity for 
+ module _ (WithCommonDomain : (σ₁ σ₂ : Subst) → Compatible σ₁ σ₂) where 
+
 
 -- Here we are only handling treefixes with 
 -- natural numbers as metavariables. We can try
 -- to generalize later.
 
-MetaVar : Atom n → Set
-MetaVar α = ℕ
 
-Tx' : Atom n → Set
-Tx' = Tx MetaVar
-
+data TxD {ℓ}(F : Atom n → Set ℓ) : Atom n → Set ℓ where
+  hole  : ∀{at} → F at   → TxD F at
+  under : ∀{at}          → TxD F at
+  peel  : ∀{ι}  → (c : Constr' φ ι)
+                → All (TxD F) (typeOf' φ ι c)
+                → TxD F (I ι)
+-}
+{-
 Subst : Set
 Subst = ∀{α} → MetaVar α → Maybe (Tx' α)
 
--- We define our order paramtrized by a substitution
--- from variables to terms.
-mutual
-  data Tx≤* (σ : Subst)
-           : ∀{π}(p q : All Tx' π) → Set where
-    Tx≤[] : Tx≤* σ [] []
-    Tx≤∷  : ∀{α π}(p q : Tx' α)(ps qs : All Tx' π)
-          → Tx≤ σ p q
-          → Tx≤* σ ps qs
-          → Tx≤* σ (p ∷ ps) (q ∷ qs)
+subst1 : ∀{α} → MetaVar α → Tx' α → Subst
+subst1 {α} n x {α'} n' 
+  with α ≟Atom α'
+...| no _ = nothing
+...| yes refl
+  with n ≟N n'
+...| no  _ = nothing
+...| yes _ = just x
 
-  data Tx≤ (σ : Subst)
-           : ∀{α}(p q : Tx' α) → Set where
+Matches : ∀{α} → Tx' α → ⟦ φ ⟧FA α → Maybe Subst
+Matches {α} (hole x) el = just (subst1 {α} x (fromEl el))
+Matches under el        = just (const nothing)
+Matches (peel c x) el   = {!!}
+-}
 
-    Tx≤KonKon  : ∀{κ}(k : ⟦ κ ⟧K)   → Tx≤ σ (opq k) (opq k)
-    Tx≤KonHole : ∀{κ n}(k : ⟦ κ ⟧K) → Tx≤ σ (opq k) (hole n)
-
-    Tx≤Peel  : ∀{ι}(c : Constr' φ ι)(ps qs : All Tx' (typeOf' φ ι c))
-             → Tx≤* σ ps qs
-             → Tx≤ σ (peel {ι = ι} c ps) (peel c qs)
-
-    Tx≤Var   : ∀{at}{n : ℕ}
-             → Tx≤ σ (hole {at = at} n) (hole n)
- 
-    Tx≤Subst : ∀{at}{n : ℕ}{t : Tx' at}
-             → σ n ≡ just t
-             → Tx≤ σ t (hole {at = at} n)
-
+{-
 -- We can give an extensional charaterization of Tx≤
 -- by the means of a non-deterministic apply function
 module _ where
@@ -67,16 +143,18 @@ module _ where
   applySubst* σ [] = return []
   applySubst* σ (p ∷ ps) = applySubst σ p >>= λ p' 
                          → (p' ∷_) <$> applySubst* σ ps
-  
+-} 
 
     
-
+{-
 -- Finally, the final relation between Tx's
 _⊑_ : ∀{at} → Tx' at → Tx' at → Set
 p ⊑ q = Σ Subst (λ σ → Tx≤ σ p q)
+-}
 
 -- Now, the fun part! Proving it is a preorder!
 
+{-
 -- Reflexivity is trivial!
 ⊑-refl : ∀{at}(p : Tx' at) → p ⊑ p
 ⊑-refl p = const nothing , go p
@@ -90,6 +168,7 @@ p ⊑ q = Σ Subst (λ σ → Tx≤ σ p q)
 
     aux []       = Tx≤[]
     aux (x ∷ xs) = Tx≤∷ x x xs xs (go x) (aux xs)
+-}
 
 -- When proving transitivity, we are given two substitutions;
 --

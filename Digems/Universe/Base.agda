@@ -118,6 +118,10 @@ Fam n = Vec (Sum n) n
 data Fix {n : ℕ}(φ : Fam n) : Fin n → Set where
   ⟨_⟩ : ∀{i} → ⟦ ⟦ φ ⟧F i ⟧S (Fix φ) → Fix φ i
 
+⟦_⟧FA : {n : ℕ}(φ : Fam n) → Atom n → Set
+⟦ φ ⟧FA (K κ) = ⟦ κ ⟧K
+⟦ φ ⟧FA (I ν) = Fix φ ν
+
 unFix : ∀{n}{φ : Fam n} → ∀{i} → Fix φ i → ⟦ ⟦ φ ⟧F i ⟧S (Fix φ)
 unFix ⟨ x ⟩ = x
 
