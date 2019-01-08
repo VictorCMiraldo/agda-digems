@@ -24,7 +24,14 @@ module WithArity (arity : ℕ) where
  -- We define a substitution to be a vector assigning to each metavariable
  -- a treefix.
  SubstN : ℕ → Set
+ -- SubstN = Vec (Maybe (Σ (Atom n) (λ α → ⟦ α ⟧A (Fix φ))))
  SubstN = Vec (Maybe (Σ (Atom n) Tx))
+
+ {-# TERMINATING #-}
+ fromEl : ∀{α} → ⟦ α ⟧A (Fix φ) → Tx α
+ fromEl {I ι} (⟨ x ⟩) with sop x
+ ...| tag c p = peel c (All-map {!fromEl!} p)
+ fromEl {K κ} k     = opq k
 
  -- Two substitutions are compatible iff they assime the same terms to the
  -- same metavariables.
@@ -63,27 +70,49 @@ module WithArity (arity : ℕ) where
  Subst : Set
  Subst = SubstN arity
 
- -- We define our order paramtrized by a substitution
- -- from variables to terms.
- mutual
-   data Tx≤* (σ : Subst) : ∀{π}(p q : All Tx π) → Set where
-     Tx≤[] : Tx≤* σ [] []
-     Tx≤∷  : ∀{α π}{p q : Tx α}{ps qs : All Tx π}
-           → Tx≤ σ p q 
-           → Tx≤* σ ps qs 
-           → Tx≤* σ (p ∷ ps) (q ∷ qs) 
+ -- The patches we wish to compare are elements of Dₓʸ,
+ -- defined by the set of patches p s.t. apply p x ≡ just y.
+ -- Working under the same substitution provides an easier way
+ -- of carrying this hypothesis around. We must compare patches
+ -- under a substitution and a proof that exhaustively applying that
+ -- substitution yields x.
+ module Under (σ : Subst) where
 
-   data Tx≤ (σ : Subst) : ∀{α}(p q : Tx α) → Set where
+  -- We define our order paramtrized by a substitution
+  -- from variables to terms.
+  mutual
+    data Tx≤* : ∀{π}(p q : All Tx π) → Set where
+      Tx≤[] : Tx≤* [] []
+      Tx≤∷  : ∀{α π}{p q : Tx α}{ps qs : All Tx π}
+            → Tx≤ p q 
+            → Tx≤* ps qs 
+            → Tx≤* (p ∷ ps) (q ∷ qs) 
 
-     Tx≤Refl  : ∀{α}{d : Tx α} → Tx≤ σ d d
+    data Tx≤ : ∀{α}(p q : Tx α) → Set where
 
-     Tx≤Peel  : ∀{ι}(c : Constr' φ ι){ps qs : All Tx (typeOf' φ ι c)}
-              → Tx≤* σ ps qs
-              → Tx≤ σ (peel {ι = ι} c ps) (peel c qs)
+      Tx≤Refl  : ∀{α}{d : Tx α} → Tx≤ d d
 
-     Tx≤Subst : ∀{at idx}{t : Tx at}
-              → subst-img-is σ idx t
-              → Tx≤ σ t (hole {at = at} idx)
+      Tx≤Peel  : ∀{ι}(c : Constr' φ ι){ps qs : All Tx (typeOf' φ ι c)}
+               → Tx≤* ps qs
+               → Tx≤ (peel {ι = ι} c ps) (peel c qs)
+
+      Tx≤Subst : ∀{at idx}{t : Tx at}
+               → subst-img-is σ idx t
+               → Tx≤ t (hole {at = at} idx)
+
+  Tx≤-refl : ∀{α}(p : Tx α) → Tx≤ p p
+  Tx≤-refl p = Tx≤Refl
+
+  Tx≤-trans : ∀{α}(p q r : Tx α) → Tx≤ p q → Tx≤ q r → Tx≤ p r
+  Tx≤-trans p q r Tx≤Refl        qr = qr
+  Tx≤-trans p q r (Tx≤Subst prf) Tx≤Refl = Tx≤Subst prf
+  Tx≤-trans (hole idx₀) (hole idx) (hole idx') (Tx≤Subst prf) (Tx≤Subst prf') 
+    with idx₀ ≟F idx'
+  ...| no abs = Tx≤Subst {!!}
+  ...| yes refl = Tx≤Refl
+  Tx≤-trans p (hole idx) (hole idx') (Tx≤Subst prf) (Tx≤Subst prf') 
+    = Tx≤Subst {!!}
+  Tx≤-trans p q r pq      qr = {!!}
 
 {-
  -- We are only interested in transitivity for 
