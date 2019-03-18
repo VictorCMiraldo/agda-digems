@@ -3,18 +3,103 @@ open import Digems.Universe.Base
 
 -- We shall carry out the proof that our ordering of
 -- relevant treefixes is, in fact, a preorder.
-module Digems.Universe.Treefix.Preorder {n : ℕ}(φ : Fam n) where
+module Digems.Universe.Treefix.Preorder where
 
-open import Digems.Universe.Treefix φ
-  renaming (Tx to Treefix)
-open DecEq (Fix φ) _≟Fix_
+module ForFam {n : ℕ}(φ : Fam n) where
+ 
+ open DecEq (Fix φ) _≟Fix_
+ 
+ -- The first abstraction is that we shall fix the number of metariables.
+ -- This, in fact, produces a family of proofs. Each for a treefix with
+ -- a given number of variables. Note that since treefixes might not
+ -- use all its variables, we just care for the treefix with *the most* variables.
+ module WithArity (arity : ℕ)(typeOfVar : Fin arity → Atom n) where
+ 
+  data Tx : Atom n → Set where
+    hole : (v : Fin arity) → Tx (typeOfVar v)
+    opq  : ∀{κ}  → ⟦ κ ⟧K → Tx (K κ)
+    peel : ∀{ι}  → (c : Constr' φ ι)
+                 → All Tx (typeOf' φ ι c)
+                 → Tx (I ι)
+ 
+  data not-hole : ∀{at} → Tx at → Set where
+    nh-peel : ∀{ι} → (c : Constr' φ ι)
+                   → (p : All Tx (typeOf' φ ι c))
+                   → not-hole (peel {ι} c p) 
+ 
+  Subst : Set
+  Subst = (v : Fin arity) → Tx (typeOfVar v)
+ 
+  module Under (σ : Subst) where
+ 
+   mutual
+     data Tx≤* : ∀{π}(p q : All Tx π) → Set where
+       Tx≤[] : Tx≤* [] []
+       Tx≤∷  : ∀{α π}{p q : Tx α}{ps qs : All Tx π}
+             → Tx≤ p q 
+             → Tx≤* ps qs 
+             → Tx≤* (p ∷ ps) (q ∷ qs) 
+ 
+     data Tx≤ : ∀{α}(p q : Tx α) → Set where
+ 
+       Tx≤Refl  : ∀{α}{d : Tx α} → Tx≤ d d
+ 
+       Tx≤Peel  : ∀{ι}(c : Constr' φ ι){ps qs : All Tx (typeOf' φ ι c)}
+                → Tx≤* ps qs
+                → Tx≤ (peel {ι = ι} c ps) (peel c qs)
+ 
+       Tx≤Subst : ∀{idx}{p : Tx (typeOfVar idx)}
+                → Tx≤ p (σ idx)
+                → Tx≤ p (hole idx)
+ 
+   Tx≤*-refl : ∀{π}{ps : All Tx π} → Tx≤* ps ps
+   Tx≤*-refl {ps = []}     = Tx≤[]
+   Tx≤*-refl {ps = p ∷ ps} = Tx≤∷ Tx≤Refl Tx≤*-refl
+ 
+   mutual
+    Tx≤*-trans : ∀{π}{p q r : All Tx π} → Tx≤* p q → Tx≤* q r → Tx≤* p r
+    Tx≤*-trans pq Tx≤[] = pq
+    Tx≤*-trans (Tx≤∷ a as) (Tx≤∷ b bs) = Tx≤∷ (Tx≤-trans a b) (Tx≤*-trans as bs)
+  
+    Tx≤-trans : ∀{α}{p q r : Tx α} → Tx≤ p q → Tx≤ q r → Tx≤ p r
+    Tx≤-trans pq Tx≤Refl = pq
+    Tx≤-trans Tx≤Refl (Tx≤Peel c x) = Tx≤Peel c (Tx≤*-trans Tx≤*-refl x)
+    Tx≤-trans (Tx≤Peel .c x₁) (Tx≤Peel c x) = Tx≤Peel c (Tx≤*-trans x₁ x)
+    Tx≤-trans {p = p} pq (Tx≤Subst {idx = v} rec) = Tx≤Subst (Tx≤-trans pq rec)
 
--- The first abstraction is that we shall fix the number of metariables.
--- This, in fact, produces a family of proofs. Each for a treefix with
--- a given number of variables. Note that since treefixes might not
--- use all its variables, we just care for the treefix with *the most* variables.
-module WithArity (arity : ℕ) where
+module _ where
+  
+  Fam-Bin : Fam 1
+  Fam-Bin = ((I zero ∷ I zero ∷ []) ∷ [] ∷ []) ∷ []
 
+  open ForFam Fam-Bin
+  open WithArity 3 (λ _ → I zero)
+
+  postulate σ : Subst
+
+  open Under σ
+
+  better : Tx (I zero) 
+  better = peel zero (hole zero ∷ hole zero ∷ [])
+
+  worse : Tx (I zero)
+  worse = peel zero (hole zero ∷ σ zero ∷ [])
+
+  w≤b : Tx≤ worse better
+  w≤b = Tx≤Peel zero (Tx≤∷ Tx≤Refl (Tx≤∷ (Tx≤Subst Tx≤Refl) Tx≤[]))
+
+
+
+
+
+ {- lemma pq prf
+    where
+     lemma : ∀{v p q} → Tx≤ p q → q ≡ proj₁ (σ v) → Tx≤ p (hole v)
+     lemma {v} pq prf with σ v 
+     ...| (q , nh-peel c p)
+-}
+  
+{-
  MetaVar : Atom n → Set
  MetaVar α = Fin arity
 
@@ -103,7 +188,7 @@ module WithArity (arity : ℕ) where
   Tx≤-refl : ∀{α}(p : Tx α) → Tx≤ p p
   Tx≤-refl p = Tx≤Refl
 
-  
+ -}
 
 {-
   Tx≤-trans : ∀{α}{p q r : Tx α} → Tx≤ p q → Tx≤ q r → Tx≤ p r
