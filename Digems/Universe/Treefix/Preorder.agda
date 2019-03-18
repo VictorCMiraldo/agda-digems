@@ -103,16 +103,20 @@ module WithArity (arity : ℕ) where
   Tx≤-refl : ∀{α}(p : Tx α) → Tx≤ p p
   Tx≤-refl p = Tx≤Refl
 
-  Tx≤-trans : ∀{α}(p q r : Tx α) → Tx≤ p q → Tx≤ q r → Tx≤ p r
-  Tx≤-trans p q r Tx≤Refl        qr = qr
-  Tx≤-trans p q r (Tx≤Subst prf) Tx≤Refl = Tx≤Subst prf
-  Tx≤-trans (hole idx₀) (hole idx) (hole idx') (Tx≤Subst prf) (Tx≤Subst prf') 
+  
+
+{-
+  Tx≤-trans : ∀{α}{p q r : Tx α} → Tx≤ p q → Tx≤ q r → Tx≤ p r
+  Tx≤-trans Tx≤Refl        qr = qr
+  Tx≤-trans (Tx≤Subst prf) Tx≤Refl = Tx≤Subst prf
+  Tx≤-trans (Tx≤Subst {idx = idx₀} prf) (Tx≤Subst {idx = idx'} prf') 
     with idx₀ ≟F idx'
   ...| no abs = Tx≤Subst {!!}
   ...| yes refl = Tx≤Refl
-  Tx≤-trans p (hole idx) (hole idx') (Tx≤Subst prf) (Tx≤Subst prf') 
+  Tx≤-trans (Tx≤Subst prf) (Tx≤Subst prf') 
     = Tx≤Subst {!!}
-  Tx≤-trans p q r pq      qr = {!!}
+  Tx≤-trans pq      qr = {!!}
+-}
 
 {-
  -- We are only interested in transitivity for 
