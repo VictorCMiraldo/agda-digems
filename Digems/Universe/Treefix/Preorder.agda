@@ -21,12 +21,12 @@ module ForFam {n : ℕ}(φ : Fam n) where
     peel : ∀{ι}  → (c : Constr' φ ι)
                  → All Tx (typeOf' φ ι c)
                  → Tx (I ι)
- 
-  data not-hole : ∀{at} → Tx at → Set where
-    nh-peel : ∀{ι} → (c : Constr' φ ι)
-                   → (p : All Tx (typeOf' φ ι c))
-                   → not-hole (peel {ι} c p) 
- 
+
+  not-hole : ∀{α} → Tx α → Set
+  not-hole (hole _)   = ⊥
+  not-hole (opq _)    = Unit
+  not-hole (peel _ _) = Unit
+
   Subst : Set
   Subst = (v : Fin arity) → Tx (typeOfVar v)
  
@@ -49,6 +49,7 @@ module ForFam {n : ℕ}(φ : Fam n) where
                 → Tx≤ (peel {ι = ι} c ps) (peel c qs)
  
        Tx≤Subst : ∀{idx}{p : Tx (typeOfVar idx)}
+                → not-hole p
                 → Tx≤ p (σ idx)
                 → Tx≤ p (hole idx)
  
@@ -65,7 +66,8 @@ module ForFam {n : ℕ}(φ : Fam n) where
     Tx≤-trans pq Tx≤Refl = pq
     Tx≤-trans Tx≤Refl (Tx≤Peel c x) = Tx≤Peel c (Tx≤*-trans Tx≤*-refl x)
     Tx≤-trans (Tx≤Peel .c x₁) (Tx≤Peel c x) = Tx≤Peel c (Tx≤*-trans x₁ x)
-    Tx≤-trans {p = p} pq (Tx≤Subst {idx = v} rec) = Tx≤Subst (Tx≤-trans pq rec)
+    Tx≤-trans {q = q} pq (Tx≤Subst {idx = v} prf rec) = {!!}
+-- = Tx≤Subst {!!} (Tx≤-trans pq rec)
 
 module _ where
   
@@ -86,7 +88,7 @@ module _ where
   worse = peel zero (hole zero ∷ σ zero ∷ [])
 
   w≤b : Tx≤ worse better
-  w≤b = Tx≤Peel zero (Tx≤∷ Tx≤Refl (Tx≤∷ (Tx≤Subst Tx≤Refl) Tx≤[]))
+  w≤b = Tx≤Peel zero (Tx≤∷ Tx≤Refl (Tx≤∷ (Tx≤Subst {!!} Tx≤Refl) Tx≤[]))
 
 
 
