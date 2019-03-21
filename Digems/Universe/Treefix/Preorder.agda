@@ -56,6 +56,11 @@ module ForFam {n : ℕ}(φ : Fam n) where
    Tx≤*-refl : ∀{π}{ps : All Tx π} → Tx≤* ps ps
    Tx≤*-refl {ps = []}     = Tx≤[]
    Tx≤*-refl {ps = p ∷ ps} = Tx≤∷ Tx≤Refl Tx≤*-refl
+
+   Tx≤-nh : ∀{α}{p q : Tx α} → Tx≤ p q → not-hole q → not-hole p
+   Tx≤-nh Tx≤Refl hip = hip
+   Tx≤-nh (Tx≤Peel c x) hip = unit
+   Tx≤-nh (Tx≤Subst x prf) ()
  
    mutual
     Tx≤*-trans : ∀{π}{p q r : All Tx π} → Tx≤* p q → Tx≤* q r → Tx≤* p r
@@ -66,8 +71,7 @@ module ForFam {n : ℕ}(φ : Fam n) where
     Tx≤-trans pq Tx≤Refl = pq
     Tx≤-trans Tx≤Refl (Tx≤Peel c x) = Tx≤Peel c (Tx≤*-trans Tx≤*-refl x)
     Tx≤-trans (Tx≤Peel .c x₁) (Tx≤Peel c x) = Tx≤Peel c (Tx≤*-trans x₁ x)
-    Tx≤-trans {q = q} pq (Tx≤Subst {idx = v} prf rec) = {!!}
--- = Tx≤Subst {!!} (Tx≤-trans pq rec)
+    Tx≤-trans {q = q} pq (Tx≤Subst {idx = v} prf rec) = Tx≤Subst (Tx≤-nh pq prf) (Tx≤-trans pq rec)
 
 module _ where
   
@@ -78,6 +82,7 @@ module _ where
   open WithArity 3 (λ _ → I zero)
 
   postulate σ : Subst
+  postulate σ-nz : not-hole (σ zero)
 
   open Under σ
 
@@ -88,7 +93,7 @@ module _ where
   worse = peel zero (hole zero ∷ σ zero ∷ [])
 
   w≤b : Tx≤ worse better
-  w≤b = Tx≤Peel zero (Tx≤∷ Tx≤Refl (Tx≤∷ (Tx≤Subst {!!} Tx≤Refl) Tx≤[]))
+  w≤b = Tx≤Peel zero (Tx≤∷ Tx≤Refl (Tx≤∷ (Tx≤Subst σ-nz Tx≤Refl) Tx≤[]))
 
 
 
