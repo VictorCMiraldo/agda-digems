@@ -3,10 +3,8 @@ open import Digems.Universe.Base
 
 -- We shall carry out the proof that our ordering of
 -- relevant treefixes is, in fact, a preorder.
-module Digems.Universe.Treefix.Preorder where
+module Digems.Metatheory.Preorder {n : ℕ}(φ : Fam n) where
 
-module ForFam {n : ℕ}(φ : Fam n) where
- 
  open DecEq (Fix φ) _≟Fix_
  
  -- The first abstraction is that we shall fix the number of metariables.
@@ -15,21 +13,9 @@ module ForFam {n : ℕ}(φ : Fam n) where
  -- use all its variables, we just care for the treefix with *the most* variables.
  module WithArity (arity : ℕ)(typeOfVar : Fin arity → Atom n) where
  
-  data Tx : Atom n → Set where
-    hole : (v : Fin arity) → Tx (typeOfVar v)
-    opq  : ∀{κ}  → ⟦ κ ⟧K → Tx (K κ)
-    peel : ∀{ι}  → (c : Constr' φ ι)
-                 → All Tx (typeOf' φ ι c)
-                 → Tx (I ι)
+  open import Digems.Universe.Treefix φ
+  open WellTyped arity typeOfVar
 
-  not-hole : ∀{α} → Tx α → Set
-  not-hole (hole _)   = ⊥
-  not-hole (opq _)    = Unit
-  not-hole (peel _ _) = Unit
-
-  Subst : Set
-  Subst = (v : Fin arity) → Tx (typeOfVar v)
- 
   module Under (σ : Subst) where
  
    mutual
@@ -49,15 +35,15 @@ module ForFam {n : ℕ}(φ : Fam n) where
                 → Tx≤ (peel {ι = ι} c ps) (peel c qs)
  
        Tx≤Subst : ∀{idx}{p : Tx (typeOfVar idx)}
-                → not-hole p
+                → txNotHole p
                 → Tx≤ p (σ idx)
-                → Tx≤ p (hole idx)
+                → Tx≤ p (hole (idx , refl))
  
    Tx≤*-refl : ∀{π}{ps : All Tx π} → Tx≤* ps ps
    Tx≤*-refl {ps = []}     = Tx≤[]
    Tx≤*-refl {ps = p ∷ ps} = Tx≤∷ Tx≤Refl Tx≤*-refl
 
-   Tx≤-nh : ∀{α}{p q : Tx α} → Tx≤ p q → not-hole q → not-hole p
+   Tx≤-nh : ∀{α}{p q : Tx α} → Tx≤ p q → txNotHole q → txNotHole p
    Tx≤-nh Tx≤Refl hip = hip
    Tx≤-nh (Tx≤Peel c x) hip = unit
    Tx≤-nh (Tx≤Subst x prf) ()
@@ -73,6 +59,7 @@ module ForFam {n : ℕ}(φ : Fam n) where
     Tx≤-trans (Tx≤Peel .c x₁) (Tx≤Peel c x) = Tx≤Peel c (Tx≤*-trans x₁ x)
     Tx≤-trans {q = q} pq (Tx≤Subst {idx = v} prf rec) = Tx≤Subst (Tx≤-nh pq prf) (Tx≤-trans pq rec)
 
+{-
 module TestDrive where
   
   Fam-Bin : Fam 1
@@ -95,3 +82,4 @@ module TestDrive where
   w≤b : Tx≤ worse better
   w≤b = Tx≤Peel zero (Tx≤∷ Tx≤Refl (Tx≤∷ (Tx≤Subst σ-nz Tx≤Refl) Tx≤[]))
 
+-}
