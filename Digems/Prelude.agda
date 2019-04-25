@@ -22,8 +22,8 @@ open import Relation.Binary.PropositionalEquality
 
 -- * Polynomial Functors
 
-open import Data.Unit.NonEta
-  public
+data Unit {ℓ} : Set ℓ where
+  unit : Unit
 
 open import Data.Empty
   public
@@ -37,6 +37,7 @@ open import Data.Product
   public
 
 open import Data.Sum
+  hiding (map₁ ; map₂)
   renaming (map to ⊎-map; swap to ⊎-swap)
   public
 
@@ -56,7 +57,7 @@ _-|-_ = ⊎-map
 -- * Base Types and Handy stuff
 
 open import Function 
-  hiding (_⟨_⟩_)
+  hiding (_⟨_⟩_ ; typeOf)
   public
 
 open import Data.Maybe 
@@ -137,15 +138,6 @@ open import Data.Vec
   public
 
 open import Data.String
-  using (String ; primStringEquality)
-  renaming (_++_ to strcat)
+  using (String)
+  renaming (_++_ to strcat ; _≟_ to _≟Str_)
   public
-
-_≟Str_ : (x y : String) → Dec (x ≡ y)
-x ≟Str y with primStringEquality x y
-...| true  = yes primTrustMe
-  where open import Agda.Builtin.TrustMe
-...| false = no (const magic)
-  where postulate magic : ⊥
-
-

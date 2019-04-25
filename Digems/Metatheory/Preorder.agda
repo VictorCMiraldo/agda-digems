@@ -16,7 +16,7 @@ module Digems.Metatheory.Preorder {n : ℕ}(φ : Fam n) where
   open import Digems.Universe.Treefix φ
   open WellTyped arity typeOfVar
 
-  module Under (σ : Subst) where
+  module Under (σ : TxSubst) where
  
    mutual
      data Tx≤* : ∀{π}(p q : All Tx π) → Set where

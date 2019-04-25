@@ -113,7 +113,7 @@ Fam : ℕ → Set
 Fam n = Vec (Sum n) n
 
 ⟦_⟧F : {n : ℕ}(φ : Fam n) → Fin n → Sum n
-⟦ φ ⟧F ι = Vec-lookup ι φ
+⟦ φ ⟧F ι = Vec-lookup φ ι
 
 data Fix {n : ℕ}(φ : Fam n) : Fin n → Set where
   ⟨_⟩ : ∀{i} → ⟦ ⟦ φ ⟧F i ⟧S (Fix φ) → Fix φ i
