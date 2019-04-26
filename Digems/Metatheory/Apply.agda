@@ -10,6 +10,7 @@ module Digems.Metatheory.Apply {n : ℕ}(φ : Fam n) where
   import Digems.Metatheory.Patch 
   open Digems.Metatheory.Patch.WithArity φ arity typeOfVar
 
+{-
   txMatch* : ∀{π} → All Tx π → ⟦ π ⟧P → TermSubst → Maybe TermSubst
 
   txMatch : ∀{α} → Tx α → ⟦ α ⟧A → TermSubst → Maybe TermSubst
@@ -25,16 +26,29 @@ module Digems.Metatheory.Apply {n : ℕ}(φ : Fam n) where
   txMatch* (tx ∷ txs) (a ∷ as) σ with txMatch tx a σ
   ...| nothing = nothing
   ...| just σ' = txMatch* txs as σ'
+-}
+
+  txMatch : ∀{α} → Tx α → ⟦ α ⟧A → Maybe TermSubst
+  txMatch tx x = txFoldMon {G = Maybe TermSubst} 
+                           (uncurry ins-if-hole)
+                           (const (just t∅)) 
+                           t-combine 
+                           (txGCP tx (txStiff x)) 
+    where
+      ins-if-hole : ∀{α} → Tx α → UTx (const ⊥) α → Maybe TermSubst
+      ins-if-hole (hole (v , refl)) t = just (v ↦ txUnstiff t)
+      ins-if-hole (peel _ _) t = nothing
+      ins-if-hole (opq _)    t = nothing
 
   txInj : ∀{α} → TermSubst → Tx α → Maybe ⟦ α ⟧A
   txInj σ = txFold {G = Maybe ∘ ⟦_⟧A} 
-                   (λ { (v , refl) → σ v }) 
+                   (λ { (v , refl) → t-lkup v σ }) 
                    just 
                    (λ c xs → Maybe-map (⟨_⟩ ∘ inj c) 
                                        (All-Maybe-sequence xs))
 
   apply : ∀{α} → Patch α → ⟦ α ⟧A → Maybe ⟦ α ⟧A
-  apply (patch d i wf) x with txMatch d x ∅ 
+  apply (patch d i wf) x with txMatch d x 
   ...| nothing = nothing 
   ...| just σ  = txInj σ i
 

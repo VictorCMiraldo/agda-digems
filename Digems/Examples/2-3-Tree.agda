@@ -68,5 +68,5 @@ module Digems.Examples.2-3-Tree where
              refl
 
   t : Maybe 2-3-tree
-  t = apply p0 (3-node (2-node leaf leaf) leaf leaf)
+  t = apply p0 (2-node (2-node leaf leaf) leaf)
   

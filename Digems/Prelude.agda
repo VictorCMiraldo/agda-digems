@@ -91,7 +91,7 @@ open import Data.List
 
 open import Data.List.All
   using (All ; _∷_ ; [])
-  renaming (map to All-map)
+  renaming (map to All-map; zipWith to All-zipWith)
   public
 
 All-∷-inj 

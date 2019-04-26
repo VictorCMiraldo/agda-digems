@@ -89,9 +89,36 @@ txJoin : ∀{ℓ F at} → UTx {ℓ} (UTx F) at → UTx F at
 txJoin = txFold id opq peel
 
 {-# TERMINATING #-}
-txStiff : ∀{ℓ F ι} → Fix φ ι → UTx {ℓ} F (I ι)
-txStiff {_} {F} ⟨ rep ⟩ with sop rep
-...| tag c p = peel c (All-map (elimA {Y = UTx F} opq txStiff) p)
+txStiff : ∀{α} → ⟦ α ⟧A (Fix φ) → UTx (const ⊥) α
+txStiff {K κ} k = opq k
+txStiff {I ι} ⟨ rep ⟩ with sop rep
+...| tag c p = peel c (All-map (elimA {Y = UTx (const ⊥)} opq txStiff) p)
 
+
+{-# TERMINATING #-}
+txUnstiff : ∀{α} → UTx (const ⊥) α → ⟦ α ⟧A (Fix φ)
+txUnstiff {K κ} (opq k) = k
+txUnstiff {I ι} (hole ())
+txUnstiff {I ι} (peel c r) 
+  = ⟨ inj c (All-map txUnstiff r) ⟩
+
+{-# TERMINATING #-}
+txGCP : ∀{ℓ₁ ℓ₂ F G α}
+      → UTx {ℓ₁} F α
+      → UTx {ℓ₂} G α
+      → UTx (λ α' → UTx F α' × UTx G α') α
+txGCP (hole x) (hole u)      = hole (hole x , hole u)
+txGCP (hole x) (opq u)       = hole (hole x , opq u)
+txGCP (hole x) (peel c u)    = hole (hole x , peel c u)
+txGCP (opq x) (hole u)       = hole (opq x , hole u)
+txGCP (peel c x) (hole u)    = hole (peel c x , hole u)
+txGCP (opq x) (opq u) 
+  with x ≟K u
+...| yes _ = opq x
+...| no  _ = hole (opq x , opq u)
+txGCP (peel c x) (peel d u) 
+  with c ≟F d
+...| yes refl = peel c (All-zipWith (uncurry txGCP) (x , u))
+...| no  _    = hole (peel c x , peel d u)
 
   
