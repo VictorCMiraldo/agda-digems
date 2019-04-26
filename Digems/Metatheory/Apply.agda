@@ -1,20 +1,14 @@
 open import Digems.Prelude
 open import Digems.Universe.Base using (Fam)
 
--- We shall carry out the proof that our ordering of
--- relevant treefixes is, in fact, a preorder.
 module Digems.Metatheory.Apply {n : ℕ}(φ : Fam n) where
 
  open import Digems.Universe φ
  
- -- The first abstraction is that we shall fix the number of metariables.
- -- This, in fact, produces a family of proofs. Each for a treefix with
- -- a given number of variables. Note that since treefixes might not
- -- use all its variables, we just care for the treefix with *the most* variables.
  module WithArity (arity : ℕ)(typeOfVar : Fin arity → Atom n) where
  
-  open import Digems.Universe.Treefix φ
-  open WellTyped arity typeOfVar
+  import Digems.Metatheory.Patch 
+  open Digems.Metatheory.Patch.WithArity φ arity typeOfVar
 
   txMatch* : ∀{π} → All Tx π → ⟦ π ⟧P → TermSubst → Maybe TermSubst
 
@@ -32,6 +26,19 @@ module Digems.Metatheory.Apply {n : ℕ}(φ : Fam n) where
   ...| nothing = nothing
   ...| just σ' = txMatch* txs as σ'
 
+  txInj : ∀{α} → TermSubst → Tx α → Maybe ⟦ α ⟧A
+  txInj σ = txFold {G = Maybe ∘ ⟦_⟧A} 
+                   (λ { (v , refl) → σ v }) 
+                   just 
+                   (λ c xs → Maybe-map (⟨_⟩ ∘ inj c) 
+                                       (All-Maybe-sequence xs))
+
+  apply : ∀{α} → Patch α → ⟦ α ⟧A → Maybe ⟦ α ⟧A
+  apply (patch d i wf) x with txMatch d x ∅ 
+  ...| nothing = nothing 
+  ...| just σ  = txInj σ i
+
+{-
   Is-just : ∀{a}{A : Set a} → Maybe A → Set
   Is-just (just _) = Unit
   Is-just nothing  = ⊥
@@ -59,3 +66,4 @@ module Digems.Metatheory.Apply {n : ℕ}(φ : Fam n) where
     with txMatch px a σ₀ | inspect (txMatch px a) σ₀
   ...| nothing | _     = ⊥-elim {!!}
   ...| just σ  | [ R ] = txMatch-complete {a = a} {σ = σ₀} px {!R!} , {!!}
+-}

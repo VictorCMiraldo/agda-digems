@@ -39,6 +39,7 @@ txNotHole (hole _)   = ⊥
 txNotHole (opq _)    = Unit
 txNotHole (peel _ _) = Unit
 
+{-
 {-# TERMINATING #-}
 txHoleIdxs : ∀{ℓ F at} → UTx {ℓ} F at → List (Atom n)
 txHoleIdxs (hole {at} _) = at ∷ []
@@ -63,45 +64,34 @@ txJoin : ∀{ℓ F at} → UTx {ℓ} (UTx F) at → UTx F at
 txJoin (hole x)     = x
 txJoin (opq k)      = opq k
 txJoin (peel c txs) = peel c (All-map txJoin txs) 
+-}
+
+{-# TERMINATING #-}
+txFold : ∀{ℓ₁ ℓ₂ F α}{G : Atom n → Set ℓ₂}
+       → (∀{at} → F at → G at)
+       → (∀{κ}  → ⟦ κ ⟧K → G (K κ))
+       → (∀{ι}  → (c : Constr' φ ι) → All G (typeOf' φ ι c) → G (I ι))
+       → (tx : UTx {ℓ₁} F α) → G α
+txFold f-hole f-opq f-peel (hole x) = f-hole x
+txFold f-hole f-opq f-peel (opq x) = f-opq x
+txFold f-hole f-opq f-peel (peel c x)
+  = f-peel c (All-map (txFold f-hole f-opq f-peel) x)
+
+txFoldMon : ∀{ℓ₁ ℓ₂ F α}{G : Set ℓ₂}
+          → (∀{at} → F at → G)
+          → (∀{κ}  → ⟦ κ ⟧K → G)
+          → (List G → G)
+          → (tx : UTx {ℓ₁} F α) → G
+txFoldMon {G = G} f-hole f-opq cat 
+  = txFold {G = const G} f-hole f-opq (λ _ → cat ∘ All-fgt)
+
+txJoin : ∀{ℓ F at} → UTx {ℓ} (UTx F) at → UTx F at
+txJoin = txFold id opq peel
 
 {-# TERMINATING #-}
 txStiff : ∀{ℓ F ι} → Fix φ ι → UTx {ℓ} F (I ι)
 txStiff {_} {F} ⟨ rep ⟩ with sop rep
 ...| tag c p = peel c (All-map (elimA {Y = UTx F} opq txStiff) p)
-
--- We also provide a 'well-typed' treefix abstraction over
--- an arbitrary number of variables.
-module WellTyped (arity : ℕ)(typeOfVar : Fin arity → Atom n) where
-  
-  TxVar : Atom n → Set
-  TxVar α = Σ (Fin arity) (λ f → α ≡ typeOfVar f)
-
-  Tx : Atom n → Set
-  Tx = UTx TxVar
-
-  TxSubst : Set
-  TxSubst = (v : Fin arity) → Tx (typeOfVar v)
- 
-  TermSubst : Set
-  TermSubst = (v : Fin arity) → Maybe (⟦ typeOfVar v ⟧A (Fix φ))
-
-  ∅ : TermSubst
-  ∅ _ = nothing
-
-  _↦_ : (v : Fin arity) → ⟦ typeOfVar v ⟧A (Fix φ)
-      → TermSubst → TermSubst
-  (v ↦ el) σ v' with v ≟F v'
-  ...| yes refl = just el
-  ...| no  _    = σ v'
-  
-  insert : (v : Fin arity) → ⟦ typeOfVar v ⟧A (Fix φ) 
-         → TermSubst → Maybe TermSubst
-  insert v el σ with σ v
-  ...| nothing = just ((v ↦ el) σ)
-  ...| just el' with _≟A_ {typeOfVar v} el el'
-  ...| yes _ = just σ
-  ...| no  _ = nothing
-
 
 
   

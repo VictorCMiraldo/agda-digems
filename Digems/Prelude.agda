@@ -66,7 +66,7 @@ open import Data.Maybe
   public
 
 open import Data.Bool
-  using (Bool ; true ; false) 
+  using (Bool ; true ; false ; _∧_ ; _∨_ ; not) 
   renaming (_≟_ to _≟B_)
   public
 
@@ -101,10 +101,16 @@ All-∷-inj
 All-∷-inj refl = refl , refl
 
 All-fgt 
-  : ∀{a}{A : Set a}{P : Set}{xs : List A}
+  : ∀{a ℓ}{A : Set a}{P : Set ℓ}{xs : List A}
   → All (const P) xs → List P
 All-fgt []       = []
 All-fgt (p ∷ ps) = p ∷ All-fgt ps
+
+All-Maybe-sequence : ∀{a}{A : Set a}{xs : List A}{P : A → Set}
+                   → All (Maybe ∘ P) xs → Maybe (All P xs)
+All-Maybe-sequence [] = just []
+All-Maybe-sequence (nothing ∷ xs) = nothing
+All-Maybe-sequence (just x ∷ xs)  = Maybe-map (x ∷_) (All-Maybe-sequence xs)
 
 open import Data.List.All.Properties
   using ()
@@ -134,7 +140,9 @@ AnyAll-select (there a) (_ ∷ qxs) = AnyAll-select a qxs
 
 open import Data.Vec
   using (Vec ; _∷_; [])
-  renaming (map to Vec-map ; lookup to Vec-lookup)
+  renaming ( map to Vec-map ; lookup to Vec-lookup 
+           ; replicate to Vec-replicate ; updateAt to Vec-updateAt
+           ; zipWith to Vec-zipWith)
   public
 
 open import Data.String
