@@ -13,6 +13,9 @@ module Digems.BinTree where
  fork-inj refl = refl , refl
 
  _≟T_ : (x y : T ⊥) → Dec (x ≡ y)
+ _        ≟T (hole ())
+ hole ()  ≟T leaf
+ hole ()  ≟T fork l r
  leaf     ≟T leaf     = yes refl
  leaf     ≟T fork l r = no (λ ())
  fork l r ≟T leaf     = no (λ ())
@@ -50,7 +53,7 @@ module Digems.BinTree where
  match (fork l r) _ = nothing
 
  ⟦_⟧ : ∀{n} → T (Fin n) → Vec (Maybe (T ⊥)) n → Maybe (T ⊥)
- ⟦ hole x   ⟧ v = Vec-lookup v x
+ ⟦ hole x   ⟧ v = Vec-lookup x v
  ⟦ leaf     ⟧ v = just leaf
  ⟦ fork l r ⟧ v 
    with ⟦ l ⟧ v | ⟦ r ⟧ v 
@@ -126,3 +129,10 @@ module Digems.BinTree where
  -- Merging
  --------------------
 
+ -- This will be pretty difficult; We might need a more expressive type of trees.
+ -- Something that counts occurences could be interesting:
+ --  
+ -- data T (n : ℕ) : Vec ℕ n → Set where
+ --   hole : (v : Fin n) → T (set 1 v) n
+ --   leaf : T n (const 0)
+ --   fork : T n v₁ → T n v₂ → T n (sum-pointwise v₁ v₂)
