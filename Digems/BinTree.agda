@@ -53,7 +53,7 @@ module Digems.BinTree where
  match (fork l r) _ = nothing
 
  ⟦_⟧ : ∀{n} → T (Fin n) → Vec (Maybe (T ⊥)) n → Maybe (T ⊥)
- ⟦ hole x   ⟧ v = Vec-lookup x v
+ ⟦ hole x   ⟧ v = Vec-lookup v x
  ⟦ leaf     ⟧ v = just leaf
  ⟦ fork l r ⟧ v 
    with ⟦ l ⟧ v | ⟦ r ⟧ v 
@@ -71,6 +71,19 @@ module Digems.BinTree where
  apply (chg d i) x with match d x
  ...| nothing = nothing
  ...| just v  = ⟦ i ⟧ v
+
+ -- I'm lazy to open monads here, so I'll just define apply2
+ apply2 : ∀{m n} → Change n → Change m → T ⊥ → Maybe (T ⊥)
+ apply2 p q x with apply p x
+ ...| nothing = nothing
+ ...| just x' = apply q x'
+
+ does-it-merge? : ∀{n m} → Change n → Change m → T ⊥ → Bool
+ does-it-merge? p q src with apply2 p q src | apply2 q p src
+ ...| just d1 | just d2 with d1 ≟T d2
+ ...| yes _ = true
+ ...| no  _ = false
+ does-it-merge? p q src | _ | _ = false
 
  -----------------------
  -- Examples
@@ -104,14 +117,178 @@ module Digems.BinTree where
  -- aunif (fork l r) (hole y)     = hole (fork l r , hole y)
  -- aunif (fork l r) leaf         = hole (fork l r , leaf)
 
- --------------------
- -- Disjointness
- --------------------
-
  data T-all {A : Set}(P : A → Set) : T A → Set where
    hole : ∀{x} → P x → T-all P (hole x)
    leaf : T-all P leaf
    fork : ∀{l r} → T-all P l → T-all P r → T-all P (fork l r)
+ 
+ Is-copy : ∀{m} → T (Fin m) × T (Fin m) → Set
+ Is-copy (hole v , hole u) = v ≡ u
+ Is-copy _                 = ⊥
+
+ --------------------
+ -- Simple Disjointness
+ --------------------
+
+ -- What are the patches p,q such that (apply p ∘ apply q) coincides with
+ -- (apply q ∘ apply p) for a given x?
+ --
+ -- Intuitively, this happens when p and q work on separate parts of
+ -- the tree altogether, needing no adaptation. Next we try to prove this thing.
+
+ SpinedChg : ℕ → Set
+ SpinedChg n = T (T (Fin n) × T (Fin n))
+
+ spined : ∀{n} → Change n → SpinedChg n
+ spined (chg d i) = aunif d i
+
+{-
+
+ -- TD₁ represents a trivial disjointness predicate stating 
+ -- two changes do not have overlapping holes AT ALL; it is pretty
+ -- simplistic as we can see next.
+ data TD₁ {n m : ℕ} : SpinedChg n → SpinedChg m → Set where
+   -- First, we have the easy cases recursing on the spine.
+   TD-leaf : TD₁ leaf leaf
+   TD-fork : ∀{l₁ r₁ l₂ r₂}
+           → TD₁ l₁ l₂
+           → TD₁ r₁ r₂
+           → TD₁ (fork l₁ r₁) (fork l₂ r₂)
+
+   -- Now the interesting bits.
+   TD-left  : ∀{id t}
+            → Is-copy id
+            → TD₁ (hole id) t
+   TD-right : ∀{id t}
+            → Is-copy id
+            → TD₁ t (hole id)
+
+ TrivialDisj₁ : ∀{n m} → Change n → Change m → Set
+ TrivialDisj₁ p q = TD₁ (spined p) (spined q)
+
+ -- It does work for simple examples:
+ module TD₁-example1 where
+
+   p : Change 3
+   p = chg (fork (fork (hole zero) (hole (suc zero)))             (hole (suc (suc zero)))) 
+           (fork (fork (fork (hole zero) (hole (suc zero))) leaf) (hole (suc (suc zero))))
+
+   q : Change 2
+   q = chg (fork (hole (suc zero)) (fork leaf (hole zero)))
+           (fork (hole (suc zero)) (hole zero))
+
+   TD₁-pq : TrivialDisj₁ p q
+   TD₁-pq = TD-fork (TD-right refl) (TD-left refl)
+
+   src : T ⊥
+   src = fork (fork leaf leaf) (fork leaf leaf)
+
+   merges = does-it-merge? p q src
+
+ -- But breaks as soon as we reuse variables; suggesting we need a better way of handling 
+ -- contractions.
+ module TD₁-example2 where
+
+   p : Change 3
+   p = chg (fork (fork (hole zero) (hole (suc zero)))             (hole (suc (suc zero)))) 
+           (fork (fork (fork (hole zero) (hole (suc zero))) leaf) (hole (suc (suc zero))))
+
+   q : Change 1
+   q = chg (fork (hole zero) (fork leaf (hole zero)))
+           (fork (hole zero) (hole zero))
+
+   TD₁-pq : TrivialDisj₁ p q
+   TD₁-pq = TD-fork (TD-right refl) (TD-left refl)
+
+   src : T ⊥
+   src = fork (fork leaf leaf) (fork leaf leaf)
+
+   merges = does-it-merge? p q src
+
+-}
+
+ -- Which suggests we should keep track of how and where variables 
+ -- are used
+ VarInfo₂ : ℕ → Set
+ VarInfo₂ = Maybe ∘ SpinedChg 
+
+ VI-Compatible1 : ∀{n}(_ _ : VarInfo₂ n) → Set
+ VI-Compatible1 (just x) (just y) = x ≡ y
+ VI-Compatible1 (just x) nothing  = Unit
+ VI-Compatible1 nothing (just x)  = Unit
+ VI-Compatible1 nothing nothing   = Unit
+
+ VI-Compatible : ∀{n m} → Vec (VarInfo₂ n) m → Vec (VarInfo₂ n) m → Set
+ VI-Compatible [] [] = Unit
+ VI-Compatible (v ∷ vs) (u ∷ us) = VI-Compatible1 v u × VI-Compatible vs us
+
+ VI-∪ : ∀{n m}(v₁ v₂ : Vec (VarInfo₂ n) m) → VI-Compatible v₁ v₂ → Vec (VarInfo₂ n) m
+ VI-∪ [] [] _ = []
+ VI-∪ (just v  ∷ vs) (just v  ∷ us) (refl , c) = just v  ∷ VI-∪ vs us c
+ VI-∪ (nothing ∷ vs) (just u  ∷ us) (_    , c) = just u  ∷ VI-∪ vs us c
+ VI-∪ (just v  ∷ vs) (nothing ∷ us) (_    , c) = just v  ∷ VI-∪ vs us c
+ VI-∪ (nothing ∷ vs) (nothing ∷ us) (_    , c) = nothing ∷ VI-∪ vs us c
+
+ VI-point : ∀{n m} → Fin m → SpinedChg n → Vec (VarInfo₂ n) m
+ VI-point zero    sp = just sp ∷ Vec-replicate nothing
+ VI-point (suc x) sp = nothing ∷ VI-point x sp
+
+ data TD₂ {n m : ℕ} : SpinedChg n → SpinedChg m 
+                    → Vec (VarInfo₂ m) n 
+                    → Vec (VarInfo₂ n) m
+                    → Set where
+   TD-leaf : ∀{v₁ v₂} → TD₂ leaf leaf v₁ v₂
+   TD-fork : ∀{l₁ r₁ l₂ r₂ vl₁ vl₂ vr₁ vr₂}
+           → TD₂ l₁ l₂ vl₁ vl₂ 
+           → TD₂ r₁ r₂ vr₁ vr₂
+           -- For the time being, compatibility is defined as:
+           --   If two branches seen the same variable, they seen it
+           --   with the same value.
+           → (p : VI-Compatible vl₁ vr₁)
+           → (q : VI-Compatible vl₂ vr₂)
+           → TD₂ (fork l₁ r₁) (fork l₂ r₂) (VI-∪ vl₁ vr₁ p) (VI-∪ vl₂ vr₂ q)
+
+   TD-left  : ∀{x t}
+            → TD₂ (hole (hole x , hole x)) t (VI-point x t) (Vec-replicate nothing)
+   TD-right : ∀{x t}
+            → TD₂ t (hole (hole x , hole x)) (Vec-replicate nothing) (VI-point x t)
+
+ TrivialDisj₂ : ∀{n m} → Change n → Change m → Set
+ TrivialDisj₂ {n} {m} p q = Σ (Vec (VarInfo₂ m) n × Vec (VarInfo₂ n) m) 
+                              (λ { (v₁ , v₂) → TD₂ (spined p) (spined q) v₁ v₂ })
+
+ module TD₂-example1 where
+
+   p : Change 3
+   p = chg (fork (fork (hole zero) (hole (suc zero)))             (hole (suc (suc zero)))) 
+           (fork (fork (fork (hole zero) (hole (suc zero))) leaf) (hole (suc (suc zero))))
+
+   q : Change 2
+   q = chg (fork (hole zero) (fork leaf (hole zero)))
+           (fork (hole zero) (hole zero))
+
+
+   -- Still not great; we should not be able to write this proof... :/
+   TD₂-pq : TrivialDisj₂ p q
+   TD₂-pq = (nothing ∷ nothing ∷ just (hole (fork leaf (hole zero) , hole zero)) ∷ [] 
+          , just
+              (fork (hole (hole zero , fork (hole zero) (hole (suc zero))))
+               (hole (hole (suc zero) , leaf))) ∷ nothing ∷ []) 
+          , TD-fork TD-right TD-left (unit , unit , unit , unit) (unit , unit , unit)
+
+   src : T ⊥
+   src = fork (fork leaf leaf) (fork leaf leaf)
+
+   merges = does-it-merge? p q src
+
+
+--    TD-right : ∀{id t}
+--             → Is-copy id
+--             → TD₁ t (hole id)
+
+ --------------------
+ -- Disjointness
+ --------------------
 
  T2 : Set → Set
  T2 A = T (T A × T A)
