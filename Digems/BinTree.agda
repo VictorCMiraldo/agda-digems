@@ -105,6 +105,34 @@ module Digems.BinTree where
  μ (hole t)   = t
  μ (fork l r) = fork (μ l) (μ r)
 
+ SameConstr : {A B : Set} → T A → T B → Set
+ SameConstr (hole x) (hole x₁)          = ⊥ -- hole is not the same constr; it's more of a meta constr.
+ SameConstr (hole x) leaf               = ⊥
+ SameConstr (hole x) (fork tb tb₁)      = ⊥
+ SameConstr leaf (hole x)               = ⊥
+ SameConstr leaf leaf                   = Unit
+ SameConstr leaf (fork tb tb₁)          = ⊥
+ SameConstr (fork ta ta₁) (hole x)      = ⊥
+ SameConstr (fork ta ta₁) leaf          = ⊥
+ SameConstr (fork ta ta₁) (fork tb tb₁) = Unit
+
+ data Tᵈ (A B : Set) : Set where
+   aunif-res : (ta : T A)(tb : T B)
+             → ¬ (SameConstr ta tb)
+             → Tᵈ A B
+
+ aunif' : ∀{A B} → T A → T B → T (Tᵈ A B)
+ aunif' leaf leaf                   = leaf
+ aunif' (fork ta ta₁) (fork tb tb₁) = fork (aunif' ta tb) (aunif' ta₁ tb₁)
+ aunif' (hole x) (hole x₁)          = hole (aunif-res (hole x) (hole x₁) id)
+ -- Other cases
+ aunif' (hole x) leaf               = hole (aunif-res (hole x) leaf id) 
+ aunif' (hole x) (fork tb tb₁)      = hole (aunif-res (hole x) leaf id)
+ aunif' leaf (hole x)               = hole (aunif-res leaf (hole x) id)
+ aunif' leaf (fork tb tb₁)          = hole (aunif-res leaf (fork tb₁ tb₁) id)
+ aunif' (fork ta ta₁) (hole x)      = hole (aunif-res leaf (hole x) id)
+ aunif' (fork ta ta₁) leaf          = hole (aunif-res (fork ta₁ ta₁) leaf id)
+
  aunif : ∀{A B} → T A → T B → T (T A × T B)
  aunif (fork l r) (fork l' r') = fork (aunif l l') (aunif r r')
  aunif leaf       leaf         = leaf
@@ -125,6 +153,34 @@ module Digems.BinTree where
  Is-copy : ∀{m} → T (Fin m) × T (Fin m) → Set
  Is-copy (hole v , hole u) = v ≡ u
  Is-copy _                 = ⊥
+
+ spined : ∀{n} → Change n → T (Tᵈ (Fin n) (Fin n))
+ spined c = aunif' (delCtx c) (insCtx c)
+
+ data _∈T_,_ {m : ℕ} : T ⊥ → T (Fin m) → Vec (Maybe (T ⊥)) m → Set where
+   ∈T-hole : ∀{t k} → t ∈T (hole k) , v-singl k t
+   ∈T-fork : ∀{l r p p' v v' v''}
+           → l ∈T p  , v
+           → r ∈T p' , v'
+           → v-union v v' ≡ just v''
+           → (fork l r) ∈T (fork p p') , v''
+
+ _∈img_ : T ⊥ → ∀{n} → Change n → Set
+ t ∈img c = ∃[ v ] (t ∈T (insCtx c) , v)
+
+ AppliesTo : ∀{n} → Change n → T ⊥ → Set
+ AppliesTo c t = ∃ (λ res → apply c t ≡ just res)
+
+ 𝓐 : ∀{m n} → Tᵈ (Fin m) (Tᵈ (Fin n) (Fin n)) → Set
+ 𝓐 (aunif-res (hole _) _                     _) = Unit
+ 𝓐 (aunif-res _ (hole (aunif-res tbi tbd _)) _) = Is-copy (tbi , tbd)
+ 𝓐 (aunif-res _ _                            _) = ⊥
+
+ lemmaA1 : ∀{m n}(delC : T (Fin m))(d : Change n)
+         → T-all 𝓐 (aunif' delC (spined d))
+         → ∃[ x ] (x ∈img d × AppliesTo d x)
+ lemmaA1 delC d hyp = {!!}
+{-
 
  --------------------
  -- Simple Disjointness
@@ -313,3 +369,5 @@ module Digems.BinTree where
  --   hole : (v : Fin n) → T (set 1 v) n
  --   leaf : T n (const 0)
  --   fork : T n v₁ → T n v₂ → T n (sum-pointwise v₁ v₂)
+
+-}
