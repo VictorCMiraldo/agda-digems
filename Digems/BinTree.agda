@@ -69,13 +69,77 @@ module Digems.BinTree where
         → Matches f r r'
         → Matches f (fork l r) (fork l' r')
 
+ ∅ : ∀{a n}{A : Set a} → Fin n → Maybe A
+ ∅ = const nothing
+
+ set : ∀{a n}{A : Set a} → Fin n → A → (Fin n → Maybe A) → Fin n → Maybe A
+ set x t f i with i ≟F x 
+ ...| yes _ = just t
+ ...| no  _ = f i
+
+ equiv1 : ∀{a n}{A : Set a}(_≟A_ : (a₁ a₂ : A) → Dec (a₁ ≡ a₂))
+        → (Fin n → Maybe A)
+        → (Fin n → Maybe A)
+        → Fin n → Bool
+ equiv1 _≟A_ f g i with f i | g i
+ ...| just _  | nothing = true
+ ...| nothing | just _  = true
+ ...| nothing | nothing = true
+ ...| just x  | just y 
+   with x ≟A y
+ ...| no  _ = false
+ ...| yes _ = true
+
+ Vec-all : ∀{n} → Vec Bool n → Bool
+ Vec-all []          = true
+ Vec-all (true  ∷ xs) = Vec-all xs 
+ Vec-all (false ∷ xs) = false
+
+ union' : ∀{a n}{A : Set a} → (Fin n → Maybe A) → (Fin n → Maybe A)
+        → Fin n → Maybe A
+ union' f g i with f i
+ ...| just x  = just x
+ ...| nothing = g i
+
+ union : ∀{a n}{A : Set a}(_≟A_ : (a₁ a₂ : A) → Dec (a₁ ≡ a₂))
+       → (Fin n → Maybe A)
+       → (Fin n → Maybe A)
+       → Maybe (Fin n → Maybe A)
+ union eqA f g with Vec-all (tabulate (equiv1 eqA f g)) 
+ ...| true  = just (union' f g) 
+ ...| false = nothing
+
+ matches : ∀{n}(pat : T (Fin n))(exp : T ⊥) → Maybe (Fin n → Maybe (T ⊥))
+ matches (hole x) t = just (set x t ∅)
+ matches leaf leaf = just ∅
+ matches (fork pat1 pat2) (fork exp1 exp2) 
+   with matches pat1 exp1 | matches pat2 exp2
+ ...| just f1 | just f2 = union _≟T_ f1 f2
+ ...| just f1 | nothing = nothing
+ ...| nothing | _       = nothing
+ matches leaf (hole x) = nothing
+ matches leaf (fork exp exp₁) = nothing
+ matches (fork pat pat₁) (hole x) = nothing
+ matches (fork pat pat₁) leaf = nothing
+
+ matches-correct : ∀{n}(pat : T (Fin n))(exp : T ⊥)(res : Fin n → Maybe (T ⊥))
+                 → matches pat exp ≡ just res
+                 → Matches res pat exp
+ matches-correct (hole x) leaf res refl = {!!}
+ matches-correct (hole x) (fork exp exp₁) res hyp = {!!}
+ matches-correct leaf leaf res hyp = {!!}
+ matches-correct (fork pat pat₁) (fork exp exp₁) res hyp = {!!}
+
+{-
  matches : ∀{n A}(pat : T (Fin n))(exp : T A) → Maybe (∃[ f ] (Matches f pat exp))
+ matches (fork pat pat₁) (fork exp exp₁) = {!!}
  matches (hole x) exp = just ((const (just exp)) , (hole refl))
  matches leaf leaf    = just ({!!} , {!leaf!})
  matches leaf (hole x) = {!!}
  matches leaf (fork exp exp₁) = {!!}
- matches (fork pat pat₁) exp = {!!}
-
+ matches (fork pat pat₁) (hole x) = {!!}
+ matches (fork pat pat₁) leaf = {!!}
+-}
 
 {-
 

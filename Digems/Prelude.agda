@@ -139,7 +139,7 @@ AnyAll-select (here px) (qx ∷ _)  = (_ , px , qx)
 AnyAll-select (there a) (_ ∷ qxs) = AnyAll-select a qxs
 
 open import Data.Vec
-  using (Vec ; _∷_; [])
+  using (Vec ; _∷_; []; tabulate)
   renaming ( map to Vec-map ; lookup to Vec-lookup 
            ; replicate to Vec-replicate ; updateAt to Vec-updateAt
            ; zipWith to Vec-zipWith)
