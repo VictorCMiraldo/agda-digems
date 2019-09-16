@@ -7,6 +7,11 @@ module Digems.BinTree where
    leaf : T A
    fork : T A → T A → T A
 
+ mapT : ∀{A B} → (A → B) → T A → T B
+ mapT f (hole x)   = hole (f x)
+ mapT f leaf       = leaf
+ mapT f (fork l r) = fork (mapT f l) (mapT f r)
+
  fork-inj : ∀{A}{l₁ l₂ r₁ r₂ : T A}
           → fork l₁ r₁ ≡ fork l₂ r₂
           → l₁ ≡ l₂ × r₁ ≡ r₂
@@ -43,6 +48,7 @@ module Digems.BinTree where
  ...| yes _ = Maybe-map (just m ∷_) (v-union ms ns)
  ...| no  _ = nothing
 
+{-
  match : ∀{n} → T (Fin n) → T ⊥ → Maybe (Vec (Maybe (T ⊥)) n)
  match (hole x)   v = just (v-singl x v)
  match leaf       v = just (Vec-replicate nothing)
@@ -52,8 +58,29 @@ module Digems.BinTree where
  ...| _       | _       = nothing
  match (fork l r) _ = nothing
 
+-}
+ 
+ data Matches {n A}(f : Fin n → Maybe (T A)) : T (Fin n) → T A → Set where
+   hole : ∀{x t} → f x ≡ just t
+        → Matches f (hole x) t
+   leaf : Matches f leaf     leaf
+   fork : ∀{l l' r r'}
+        → Matches f l l'
+        → Matches f r r'
+        → Matches f (fork l r) (fork l' r')
+
+ matches : ∀{n A}(pat : T (Fin n))(exp : T A) → Maybe (∃[ f ] (Matches f pat exp))
+ matches (hole x) exp = just ((const (just exp)) , (hole refl))
+ matches leaf leaf    = just ({!!} , {!leaf!})
+ matches leaf (hole x) = {!!}
+ matches leaf (fork exp exp₁) = {!!}
+ matches (fork pat pat₁) exp = {!!}
+
+
+{-
+
  ⟦_⟧ : ∀{n} → T (Fin n) → Vec (Maybe (T ⊥)) n → Maybe (T ⊥)
- ⟦ hole x   ⟧ v = Vec-lookup v x
+ ⟦ hole x   ⟧ v = Vec-lookup x v
  ⟦ leaf     ⟧ v = just leaf
  ⟦ fork l r ⟧ v 
    with ⟦ l ⟧ v | ⟦ r ⟧ v 
@@ -121,6 +148,12 @@ module Digems.BinTree where
              → ¬ (SameConstr ta tb)
              → Tᵈ A B
 
+ dfst : ∀{A B} → Tᵈ A B → T A
+ dfst (aunif-res x _ _) = x
+
+ dsnd : ∀{A B} → Tᵈ A B → T B
+ dsnd (aunif-res _ x _) = x
+
  aunif' : ∀{A B} → T A → T B → T (Tᵈ A B)
  aunif' leaf leaf                   = leaf
  aunif' (fork ta ta₁) (fork tb tb₁) = fork (aunif' ta tb) (aunif' ta₁ tb₁)
@@ -157,8 +190,12 @@ module Digems.BinTree where
  spined : ∀{n} → Change n → T (Tᵈ (Fin n) (Fin n))
  spined c = aunif' (delCtx c) (insCtx c)
 
+ denips : ∀{n} → T (Tᵈ (Fin n) (Fin n)) → Change n
+ denips c = chg (μ (mapT dfst c)) (μ (mapT dsnd c))
+
  data _∈T_,_ {m : ℕ} : T ⊥ → T (Fin m) → Vec (Maybe (T ⊥)) m → Set where
    ∈T-hole : ∀{t k} → t ∈T (hole k) , v-singl k t
+   ∈T-leaf : ∀{v}   → leaf ∈T leaf , v
    ∈T-fork : ∀{l r p p' v v' v''}
            → l ∈T p  , v
            → r ∈T p' , v'
@@ -171,15 +208,25 @@ module Digems.BinTree where
  AppliesTo : ∀{n} → Change n → T ⊥ → Set
  AppliesTo c t = ∃ (λ res → apply c t ≡ just res)
 
- 𝓐 : ∀{m n} → Tᵈ (Fin m) (Tᵈ (Fin n) (Fin n)) → Set
- 𝓐 (aunif-res (hole _) _                     _) = Unit
- 𝓐 (aunif-res _ (hole (aunif-res tbi tbd _)) _) = Is-copy (tbi , tbd)
- 𝓐 (aunif-res _ _                            _) = ⊥
+ A : ∀{m n} → Tᵈ (Fin m) (Tᵈ (Fin n) (Fin n)) → Set
+ A (aunif-res (hole _) _                     _) = Unit
+ A (aunif-res _ (hole (aunif-res tbi tbd _)) _) = Is-copy (tbi , tbd)
+ A (aunif-res _ _                            _) = ⊥
 
- lemmaA1 : ∀{m n}(delC : T (Fin m))(d : Change n)
-         → T-all 𝓐 (aunif' delC (spined d))
-         → ∃[ x ] (x ∈img d × AppliesTo d x)
- lemmaA1 delC d hyp = {!!}
+ lemmaA1 : ∀{m n}(delC : T (Fin m))(d : T (Tᵈ (Fin n) (Fin n))) 
+         → T-all A (aunif' delC d)         -- If the overlaps of the deletion context and spined change satisfy A
+         → ∃[ y ] (AppliesTo (denips d) y) -- And there is an element that can be applied to d
+         → ∃[ x ] (x ∈img (denips d) × ∃[ v ] (match delC x ≡ just v)) -- then, there is an element in the image of d
+                                                                       -- such that delC matches.
+ lemmaA1 (hole x)     d hyp (y , (r , appy)) = r , ({!!} , (v-singl x r) , refl)
+ lemmaA1 leaf         d hyp (y , (r , appy)) = r , ({!!} , ((Vec-replicate nothing) , refl))
+ lemmaA1 (fork cl cr) d hyp (y , (r , appy)) = {!!}
+
+ lemmaA : ∀{m n}(c : Change m)(d : Change n)
+        → T-all A (aunif' (delCtx c) (spined d))
+        → ∃[ x ] (x ∈img d × AppliesTo c x)
+ lemmaA delC d hyp = {! lemmaA1 delC (spined d) ? !}
+
 {-
 
  --------------------
@@ -369,5 +416,7 @@ module Digems.BinTree where
  --   hole : (v : Fin n) → T (set 1 v) n
  --   leaf : T n (const 0)
  --   fork : T n v₁ → T n v₂ → T n (sum-pointwise v₁ v₂)
+
+-}
 
 -}
